@@ -1,0 +1,136 @@
+name: cross-build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    name: build-${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: mipsel-linux-musl
+            arch: mipsel
+          - target: mips-linux-musl
+            arch: mips
+          - target: mips64el-linux-musl
+            arch: mips64el
+          - target: arm-linux-musleabi
+            arch: armv5
+          - target: armv7l-linux-musleabihf
+            arch: armv7hf
+          - target: aarch64-linux-musl
+            arch: aarch64
+          - target: i486-linux-musl
+            arch: i486
+          - target: x86_64-linux-musl
+            arch: x86_64
+          - target: powerpc-linux-musl
+            arch: powerpc
+          - target: riscv64-linux-musl
+            arch: riscv64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake make gcc xz-utils
+
+      - name: Download musl cross toolchain
+        run: |
+          cd /tmp
+          curl -fsSL -o toolchain.tgz "https://musl.cc/${{ matrix.target }}-cross.tgz"
+          sudo mkdir -p /opt
+          sudo tar -C /opt -xzf toolchain.tgz
+
+      - name: Configure (cross)
+        run: |
+          export PATH="/opt/${{ matrix.target }}/bin:$PATH"
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+            -DCMAKE_C_COMPILER=${{ matrix.target }}-gcc \
+            -DCMAKE_AR=${{ matrix.target }}-ar \
+            -DCMAKE_RANLIB=${{ matrix.target }}-ranlib \
+            -DCMAKE_STRIP=${{ matrix.target }}-strip
+
+      - name: Build
+        working-directory: build
+        run: cmake --build . --config $BUILD_TYPE -j $(nproc)
+
+      - name: Package binary
+        run: |
+          mkdir -p dist
+          cp build/msd_lite dist/msd_lite
+          /opt/${{ matrix.target }}/bin/${{ matrix.target }}-strip dist/msd_lite
+          cp LICENSE dist/
+          cp conf/msd_lite.conf dist/msd_lite.conf.sample
+          cd dist
+          tar -czf "msd_lite-${{ matrix.arch }}.tar.gz" msd_lite LICENSE msd_lite.conf.sample
+          sha256sum "msd_lite-${{ matrix.arch }}.tar.gz" > "msd_lite-${{ matrix.arch }}.tar.gz.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: msd_lite-${{ matrix.arch }}
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect release files
+        run: |
+          mkdir -p release
+          find artifacts -name 'msd_lite-*.tar.gz' -exec cp {} release/ \;
+          find artifacts -name '*.sha256' -exec cp {} release/ \;
+          ls -la release/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: msd_lite ${{ github.ref_name }}
+          body: |
+            ## msd_lite ${{ github.ref_name }}
+
+            基于 [rozhuk-im/msd_lite](https://github.com/rozhuk-im/msd_lite) 的 fork，新增**控制面/数据面接口分离**（`dataIfName`）特性：
+
+            - 组播订阅（IGMP/MLD join/leave）使用 `ifName` 指定接口；
+            - 组播数据接收使用 `dataIfName` 指定接口，为空时回退到 `ifName`；
+            - 支持配置文件与 HTTP URL 参数（`data_ifname` / `data_ifindex`）。
+
+            ### 交叉编译二进制（musl 静态链接，适配常见路由器 / OpenWrt 架构）
+
+            包含架构：mipsel、mips、mips64el、armv5（软浮点）、armv7hf（硬浮点）、aarch64、i486、x86_64、powerpc、riscv64
+
+            使用方式：
+
+            ```sh
+            tar -xzf msd_lite-<arch>.tar.gz
+            ./msd_lite -c msd_lite.conf
+            ```
+
+            完整配置说明见仓库内 `conf/msd_lite.conf` 与中文 README。
+          files: release/*

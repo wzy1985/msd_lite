@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+
+# CMake build artifacts
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+install_manifest.txt
+*.cmake.tmp
+
+# Compiled objects / libraries / binaries
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.dSYM/
+msd_lite
+
+# Local packaging / distribution output
+dist/
+
+# Archives
+*.tar.xz
+*.tar.gz
+*.tgz
+*.zip
+
+# Editors / IDEs
+*~
+*.swp
+*.swo
+.idea/
+.vscode/
