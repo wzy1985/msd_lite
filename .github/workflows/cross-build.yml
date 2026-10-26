@@ -19,24 +19,34 @@ jobs:
         include:
           - target: mipsel-linux-musl
             arch: mipsel
+            pidfd: 4438
           - target: mips-linux-musl
             arch: mips
+            pidfd: 4438
           - target: mips64el-linux-musl
             arch: mips64el
+            pidfd: 5438
           - target: arm-linux-musleabi
             arch: armv5
+            pidfd: 434
           - target: armv7l-linux-musleabihf
             arch: armv7hf
+            pidfd: 434
           - target: aarch64-linux-musl
             arch: aarch64
+            pidfd: 434
           - target: i486-linux-musl
             arch: i486
+            pidfd: 434
           - target: x86_64-linux-musl
             arch: x86_64
+            pidfd: 434
           - target: powerpc-linux-musl
             arch: powerpc
+            pidfd: 434
           - target: riscv64-linux-musl
             arch: riscv64
+            pidfd: 434
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,6 +65,13 @@ jobs:
           sudo mkdir -p /opt
           sudo tar -C /opt -xzf toolchain.tgz
 
+      - name: Musl compat header (sys/queue.h)
+        run: |
+          # musl does not ship <sys/queue.h> (glibc/BSD header).
+          mkdir -p compat/sys
+          curl -fsSL -o compat/sys/queue.h \
+            "https://raw.githubusercontent.com/bminor/glibc/release/2.39/master/misc/sys/queue.h"
+
       - name: Configure (cross)
         run: |
           export PATH="/opt/${{ matrix.target }}/bin:$PATH"
@@ -63,7 +80,8 @@ jobs:
             -DCMAKE_C_COMPILER=${{ matrix.target }}-gcc \
             -DCMAKE_AR=${{ matrix.target }}-ar \
             -DCMAKE_RANLIB=${{ matrix.target }}-ranlib \
-            -DCMAKE_STRIP=${{ matrix.target }}-strip
+            -DCMAKE_STRIP=${{ matrix.target }}-strip \
+            -DCMAKE_C_FLAGS="-I$PWD/compat -DSYS_pidfd_open=${{ matrix.pidfd }} -DPIDFD_NONBLOCK=0x800"
 
       - name: Build
         working-directory: build
@@ -72,7 +90,7 @@ jobs:
       - name: Package binary
         run: |
           mkdir -p dist
-          cp build/msd_lite dist/msd_lite
+          cp build/src/msd_lite dist/msd_lite
           /opt/${{ matrix.target }}/bin/${{ matrix.target }}-strip dist/msd_lite
           cp LICENSE dist/
           cp conf/msd_lite.conf dist/msd_lite.conf.sample
