@@ -113,7 +113,8 @@ typedef struct str_src_conn_udp_s {
 /* Multicast [rtp] source */
 typedef struct str_src_conn_mc_s {
 	str_src_conn_udp_t udp;
-	uint32_t	if_index;
+	uint32_t	if_index;	/* Control plane: IGMP join/leave. */
+	uint32_t	data_if_index;	/* Data plane: UDP data receive. */
 	uint32_t	rejoin_time;
 } str_src_conn_mc_t, *str_src_conn_mc_p;
 #define STR_SRC_CONN_DEF_IFINDEX	((uint32_t)-1)

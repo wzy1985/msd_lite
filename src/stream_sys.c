@@ -168,6 +168,7 @@ str_src_conn_def(str_src_conn_params_p src_conn_params) {
 		return;
 	memset(src_conn_params, 0x00, sizeof(str_src_conn_params_t));
 	src_conn_params->mc.if_index = STR_SRC_CONN_DEF_IFINDEX;
+	src_conn_params->mc.data_if_index = STR_SRC_CONN_DEF_IFINDEX;
 	src_conn_params->mc.rejoin_time = 0;
 }
 
@@ -503,12 +504,21 @@ str_hub_create_int(str_hubs_bckt_p shbskt, tpt_p tpt, uint8_t *name, size_t name
 		SYSLOG_ERR(LOG_ERR, error, "skt_bind_ap().");
 		goto err_out;
 	}
-	/* Join to multicast group. */
+	/* Join multicast group on control plane interface (IGMP). */
 	error = skt_mc_join(skt, 1, src_conn_params->mc.if_index,
 	    &conn_udp->addr);
 	if (0 != error) {
-		SYSLOG_ERR(LOG_ERR, error, "skt_mc_join().");
+		SYSLOG_ERR(LOG_ERR, error, "skt_mc_join() control plane.");
 		goto err_out;
+	}
+	/* Join multicast group on data plane interface (UDP receive). */
+	if (src_conn_params->mc.data_if_index != src_conn_params->mc.if_index) {
+		error = skt_mc_join(skt, 1, src_conn_params->mc.data_if_index,
+		    &conn_udp->addr);
+		if (0 != error) {
+			SYSLOG_ERR(LOG_ERR, error, "skt_mc_join() data plane.");
+			goto err_out;
+		}
 	}
 	/* Tune socket. */
 	error = skt_rcv_tune(skt, src_params->skt_rcv_buf, src_params->skt_rcv_lowat);

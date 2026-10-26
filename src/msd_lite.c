@@ -116,7 +116,7 @@ int		msd_http_srv_hub_attach(http_srv_cli_p cli,
 		    str_src_conn_params_p src_conn_params);
 uint32_t	msd_http_req_url_parse(http_srv_req_p req,
 		    struct sockaddr_storage *ssaddr,
-		    uint32_t *if_index, uint32_t *rejoin_time,
+		    uint32_t *if_index, uint32_t *data_if_index, uint32_t *rejoin_time,
 		    uint8_t *hub_name, size_t hub_name_size,
 		    size_t *hub_name_size_ret);
 
@@ -264,6 +264,17 @@ msd_src_conn_profile_load(const uint8_t *data, size_t data_size, void *conn) {
 		memcpy(if_name, ptm, MIN(IFNAMSIZ, tm));
 		if_name[MIN(IFNAMSIZ, tm)] = 0;
 		((str_src_conn_mc_p)conn)->if_index = if_nametoindex(if_name);
+	}
+	/* Data plane interface, optional, defaults to ifName. */
+	if (0 == xml_get_val_args(data, data_size, NULL, NULL, NULL,
+	    &ptm, &tm, (const uint8_t*)"multicast", "dataIfName", NULL) &&
+	    0 != tm) {
+		memcpy(if_name, ptm, MIN(IFNAMSIZ, tm));
+		if_name[MIN(IFNAMSIZ, tm)] = 0;
+		((str_src_conn_mc_p)conn)->data_if_index = if_nametoindex(if_name);
+	} else {
+		((str_src_conn_mc_p)conn)->data_if_index =
+		    ((str_src_conn_mc_p)conn)->if_index;
 	}
 	xml_get_val_uint32_args(data, data_size, NULL,
 	    &((str_src_conn_mc_p)conn)->rejoin_time,
@@ -527,11 +538,11 @@ msd_http_srv_hub_attach(http_srv_cli_p cli, uint8_t *hub_name, size_t hub_name_s
 
 uint32_t
 msd_http_req_url_parse(http_srv_req_p req, struct sockaddr_storage *ssaddr,
-    uint32_t *if_index, uint32_t *rejoin_time,
+    uint32_t *if_index, uint32_t *data_if_index, uint32_t *rejoin_time,
     uint8_t *hub_name, size_t hub_name_size, size_t *hub_name_size_ret) {
 	const uint8_t *ptm;
 	size_t tm;
-	uint32_t ifindex, rejointime;
+	uint32_t ifindex, data_ifindex, rejointime;
 	char straddr[STR_ADDR_LEN], ifname[(IFNAMSIZ + 1)];
 	struct sockaddr_storage ss;
 
@@ -546,7 +557,7 @@ msd_http_req_url_parse(http_srv_req_p req, struct sockaddr_storage *ssaddr,
 	if (0 == sa_port_get(&ss)) { /* Def udp port. */
 		sa_port_set(&ss, 1234);
 	}
-	/* ifname, ifindex. */
+	/* ifname, ifindex (control plane). */
 	if (0 == http_query_val_get(req->line.query, req->line.query_size,
 	    (const uint8_t*)"ifname", 6, &ptm, &tm) && IFNAMSIZ > tm) {
 		memcpy(ifname, ptm, tm);
@@ -566,6 +577,27 @@ msd_http_req_url_parse(http_srv_req_p req, struct sockaddr_storage *ssaddr,
 		}
 		ifname[0] = 0;
 		if_indextoname(ifindex, ifname);
+	}
+
+	/* data_ifname, data_ifindex (data plane, optional). */
+	if (0 == http_query_val_get(req->line.query, req->line.query_size,
+	    (const uint8_t*)"data_ifname", 11, &ptm, &tm) && IFNAMSIZ > tm) {
+		char data_ifname[(IFNAMSIZ + 1)];
+		memcpy(data_ifname, ptm, tm);
+		data_ifname[tm] = 0;
+		data_ifindex = if_nametoindex(data_ifname);
+	} else {
+		if (0 == http_query_val_get(req->line.query,
+		    req->line.query_size, (const uint8_t*)"data_ifindex", 12,
+		    &ptm, &tm)) {
+			data_ifindex = ustr2u32(ptm, tm);
+		} else { /* Default value. */
+			if (NULL != data_if_index) {
+				data_ifindex = (*data_if_index);
+			} else {
+				data_ifindex = ifindex;
+			}
+		}
 	}
 
 	/* rejoin_time. */
@@ -590,6 +622,9 @@ msd_http_req_url_parse(http_srv_req_p req, struct sockaddr_storage *ssaddr,
 	}
 	if (NULL != if_index) {
 		(*if_index) = ifindex;
+	}
+	if (NULL != data_if_index) {
+		(*data_if_index) = data_ifindex;
 	}
 	if (NULL != rejoin_time) {
 		(*rejoin_time) = rejointime;
@@ -666,6 +701,7 @@ msd_http_srv_on_req_rcv_cb(http_srv_cli_p cli, void *udata __unused,
 		resp->status_code = msd_http_req_url_parse(req,
 		    &src_conn_params.udp.addr,
 		    &src_conn_params.mc.if_index,
+		    &src_conn_params.mc.data_if_index,
 		    &src_conn_params.mc.rejoin_time,
 		    buf, sizeof(buf), &buf_size);
 		if (200 != resp->status_code)
