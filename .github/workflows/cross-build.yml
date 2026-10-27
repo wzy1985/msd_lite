@@ -63,6 +63,7 @@ jobs:
       - name: Configure (cross)
         run: |
           export PATH="/opt/${{ matrix.target }}/bin:$PATH"
+          PLIB=${{ matrix.target }}-gcc -print-file-name=libc.a
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
             -DCMAKE_C_COMPILER=${{ matrix.target }}-gcc \
@@ -70,6 +71,7 @@ jobs:
             -DCMAKE_RANLIB=${{ matrix.target }}-ranlib \
             -DCMAKE_STRIP=${{ matrix.target }}-strip \
             -DCMAKE_C_FLAGS="-I$PWD/compat -DSYS_pidfd_open=${{ matrix.pidfd }} -DPIDFD_NONBLOCK=0x800" \
+            -DPTHREAD_LIBRARY="$PLIB" \
             -DMSD_DISABLE_PIE=ON \
             -DCMAKE_EXE_LINKER_FLAGS="-static"
 
