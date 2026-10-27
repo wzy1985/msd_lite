@@ -70,10 +70,10 @@ jobs:
             -DCMAKE_AR=${{ matrix.target }}-ar \
             -DCMAKE_RANLIB=${{ matrix.target }}-ranlib \
             -DCMAKE_STRIP=${{ matrix.target }}-strip \
-            -DCMAKE_C_FLAGS="-I$PWD/compat -DSYS_pidfd_open=${{ matrix.pidfd }} -DPIDFD_NONBLOCK=0x800" \
+            -DCMAKE_C_FLAGS="-fno-pie -I$PWD/compat -DSYS_pidfd_open=${{ matrix.pidfd }} -DPIDFD_NONBLOCK=0x800" \
             -DPTHREAD_LIBRARY="$PLIB" \
             -DMSD_DISABLE_PIE=ON \
-            -DCMAKE_EXE_LINKER_FLAGS="-static"
+            -DCMAKE_EXE_LINKER_FLAGS="-static -no-pie"
 
       - name: Build
         working-directory: build
