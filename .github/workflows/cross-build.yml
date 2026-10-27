@@ -70,6 +70,7 @@ jobs:
             -DCMAKE_RANLIB=${{ matrix.target }}-ranlib \
             -DCMAKE_STRIP=${{ matrix.target }}-strip \
             -DCMAKE_C_FLAGS="-I$PWD/compat -DSYS_pidfd_open=${{ matrix.pidfd }} -DPIDFD_NONBLOCK=0x800" \
+            -DMSD_DISABLE_PIE=ON \
             -DCMAKE_EXE_LINKER_FLAGS="-static"
 
       - name: Build

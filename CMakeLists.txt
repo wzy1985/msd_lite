@@ -28,6 +28,10 @@ if (ENABLE_TESTS)
 	set(ENABLE_LIBLCB_TESTS TRUE)
 endif()
 
+# Disable PIE linking. Needed for fully static musl builds (static-pie is not
+# supported on older embedded kernels).
+option(MSD_DISABLE_PIE		"Disable PIE linking [default: OFF]"	OFF)
+
 # Now CMAKE_INSTALL_PREFIX is a base prefix for everything.
 if (NOT CONFDIR)
 	set(CONFDIR "${CMAKE_INSTALL_PREFIX}/etc/msd_lite")
@@ -220,7 +224,7 @@ try_c_flag(MFUNCTION_RETURN		"-mfunction-return=thunk")
 try_c_flag(MINDIRECT_BRANCH		"-mindirect-branch=thunk")
 try_c_flag(FWRAPV			"-fwrapv")
 try_c_flag(FPIE				"-fPIE")
-if (C_FLAG_FPIE)
+if (C_FLAG_FPIE AND NOT MSD_DISABLE_PIE)
 	try_linker_flag(PIE		"-pie")
 endif()
 try_linker_flag(RETPOLINEPLT		"-Wl,-z,retpolineplt")
