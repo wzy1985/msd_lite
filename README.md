@@ -5,7 +5,7 @@
 
 > 本项目是基于 [rozhuk-im/msd_lite](https://github.com/rozhuk-im/msd_lite) 的 fork，在原有功能基础上新增了 **控制面 / 数据面接口分离**（`dataIfName`）能力，详见下文"控制面 / 数据面分离"一节。
 >
-> 适用于 **IPTV 组播订阅与组播流分离 VLAN** 的场景：在运营商 IPTV 网络中，点播（认证/拨号）VLAN 与组播流 VLAN 通常位于不同网卡。使用前只需分别为点播 VLAN 与组播 VLAN 创建接口，并在点播 VLAN 接口上提前配置好 **DHCP+（IPTV 认证）** 拿到 IP；之后编辑 msd_lite 配置，将 `ifName` 指向 **点播 VLAN 接口**、`dataIfName` 指向 **组播数据接收接口**，即可实现无需配置 IGMP 转发，简单地实现 IPTV 组播转发，适配绝大多数国内运营商 IPTV 配置。
+> 适用于 **IPTV 组播订阅与组播流分离 VLAN** 的场景：在某些运营商 IPTV 网络中，因组播需要获得运营商认证才准许下发组播流，因此使用了点播 VLAN 发送组播订阅。点播（认证/拨号）与组播流通常位于不同 VLAN。使用前只需分别为点播 VLAN 与组播 VLAN 创建接口，并在点播 VLAN 接口上提前配置好 **DHCP+（IPTV 认证）** 拿到 IP；之后编辑 msd_lite 配置，将 `ifName` 指向 **点播 VLAN 接口**、`dataIfName` 指向 **组播数据接收接口**，即可实现无需配置 IGMP 转发，简单地实现 IPTV 组播转发，适配绝大多数国内运营商 IPTV 配置。
 
 ---
 
