@@ -134,12 +134,12 @@ msd_lite [-d] [-v] [-c file]
 | `multicast.dataIfName` | **数据面接口**（本 fork 新增）：实际接收组播 UDP 数据的网卡名称，留空时回退为 `ifName` |
 | `multicast.rejoinTime` | 每隔 X 秒执行一次 IGMP/MLD leave+join（刷新订阅），`0` 表示不执行 |
 
-**配置示例**（订阅走 `vlan777`，数据接收走 `eth0`）：
+**配置示例**（订阅走 `vlan1010`，数据接收走 `vlan4000`）：
 
 ```xml
 <multicast>
-    <ifName>vlan777</ifName>
-    <dataIfName>eth0</dataIfName>
+    <ifName>vlan1010</ifName>
+    <dataIfName>vlan4000</dataIfName>
     <rejoinTime>0</rejoinTime>
 </multicast>
 ```
@@ -171,10 +171,10 @@ msd_lite [-d] [-v] [-c file]
 | `data_ifindex` | 数据面 | 数据接收接口索引（本 fork 新增） |
 | `rejoin_time` | — | 覆盖配置中的 `rejoinTime` |
 
-**播放地址示例**（订阅接口 `vlan777`，数据接收接口 `eth0`）：
+**播放地址示例**（订阅接口 `vlan1010`，数据接收接口 `vlan4000`）：
 
 ```
-http://msd-host:7088/udp/239.255.0.1:1234?ifname=vlan777&data_ifname=eth0
+http://msd-host:7088/udp/239.255.0.1:1234?ifname=vlan1010&data_ifname=vlan4000
 ```
 
 若只指定订阅接口、不指定数据面参数，则数据接收自动回退到订阅接口（与原有行为一致）：
